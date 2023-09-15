@@ -9,6 +9,7 @@ packages = [{include = "async_chat"}]
 [tool.poetry.dependencies]
 python = "^3.8"
 aiofiles = "^23.2.1"
+configargparse = "^1.7"
 
 
 [build-system]
