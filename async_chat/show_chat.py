@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 def create_parser():
-    parser = configargparse.ArgParser(default_config_files=['.env'])
+    parser = configargparse.ArgParser(default_config_files=['.env'], ignore_unknown_config_file_keys=True)
 
     parser.add('-f', '--FILE', env_var='FILE', help='файл назначения для логов', default='history', type=str, nargs='?')
     parser.add('-c', '--HOST', env_var='HOST', help='хост секретного чата', default='minechat.dvmn.org', type=str, nargs='?')
