@@ -25,9 +25,9 @@ async def authorise(reader, writer, token):
     writer.write(token.encode())
     await writer.drain()
     data = await reader.readline()
-    logging.debug(f'Received: {data.decode()!r}')
+    logger.debug(f'Received: {data.decode()!r}')
     if json.loads(data.decode().split('\n')[0]) is None:
-        logging.info('Неизвестный токен. Переключаем на регистрацию.')
+        logger.info('Неизвестный токен. Переключаем на регистрацию.')
         return False
     return True
 
@@ -42,24 +42,27 @@ async def registration(reader, writer):
     await writer.drain()
     await reader.readuntil(separator=b'\n')
     data = await reader.readline()
-    logging.info(f'Вас зарегистрированы с именем {name}')
-    logging.debug(f'Received: {data.decode()}')
+    logger.info(f'Вас зарегистрированы с именем {name}')
+    logger.debug(f'Received: {data.decode()}')
 
     token = "TOKEN=" + json.loads(data.decode().split('\n')[0])['account_hash'] + '\n'
     await write_into_file(token, 'token.txt', mode='w')
 
+    logger.info(
+        'Спасибо за регистрацию, ваш токен записан в файл token.txt, перезапустите программу.'
+    )
     writer.close()
     await writer.wait_closed()
 
 
 async def submit_message(reader, writer, message=''):
     data = await reader.readline()
-    logging.debug(data.decode())
+    logger.debug(data.decode())
     message = message.replace('\n', '\\n')
     writer.write(f"{message}\n\n".encode())
     await writer.drain()
     await reader.readline()
-    logging.info(f'Сообщение "{message}" отправлено!')
+    logger.info(f'Сообщение "{message}" отправлено!')
 
 
 async def tcp_echo_client():
@@ -71,7 +74,7 @@ async def tcp_echo_client():
     reader, writer = await asyncio.open_connection(host, port)
 
     data = await reader.readline()
-    logging.debug(f'Received: {data.decode()!r}')
+    logger.debug(f'Received: {data.decode()!r}')
 
     is_token_approve = await authorise(reader, writer, f"{token}\n")
 
@@ -80,7 +83,7 @@ async def tcp_echo_client():
 
     await submit_message(reader, writer, message)
 
-    logging.info('Соединение закрыто')
+    logger.info('Соединение закрыто')
     writer.close()
     await writer.wait_closed()
 
@@ -94,21 +97,11 @@ def main():
 
     parser = create_parser()
     options = parser.parse_args()
-    logging.debug(options)
+    logger.debug(options)
 
     connection_details.set(options)
 
-    try:
-        asyncio.run(tcp_echo_client())
-    except ConnectionResetError:
-        logging.info(
-            'Спасибо за регистрацию, ваш токен записан в файл token.txt, перезапустите программу.'
-        )
-    except ConnectionError:
-        logging.info(
-            'Ошибка соединения, повторное соединение будет через 10 сек.'
-        )
-        asyncio.run(tcp_echo_client())
+    asyncio.run(tcp_echo_client())
 
 
 if __name__ == "__main__":
