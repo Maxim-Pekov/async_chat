@@ -24,6 +24,7 @@ async def authorise(reader, writer, token):
 async def registration(reader, writer):
     logging.info(f'Введите ваше имя')
     name = input()
+    name = name.replace('\n', '\\n')
     writer.write(f"{name}\n".encode())
     await writer.drain()
     await reader.readuntil(separator=b'\n')
@@ -55,12 +56,12 @@ async def tcp_echo_client(message=""):
     data = await reader.readline()
     logging.debug(f'111-----Received: {data.decode()!r}')
 
-    is_token_approve = await authorise(reader, writer, "dfaab544-5414-11ee-aae7-0242ac110002\n")
+    is_token_approve = await authorise(reader, writer, "dfaab544-5414-11ee-aae7-0242ac110002+\n")
 
     if not is_token_approve:
         await registration(reader, writer)
 
-    await submit_message(reader, writer, message)
+    await submit_message(reader, writer, 'Hii \n everybody'.replace('\n', '\\n'))
 
     logging.info('Close the connection')
     writer.close()
