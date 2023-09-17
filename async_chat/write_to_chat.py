@@ -7,6 +7,8 @@ import contextvars
 import logging
 import json
 
+from file import write_into_file
+
 
 def create_parser():
     parser = configargparse.ArgParser(default_config_files=['.env', 'token.txt'], ignore_unknown_config_file_keys=True)
@@ -15,7 +17,7 @@ def create_parser():
     parser.add('-u', '--NAME', env_var='NAME', help='Имя для использования в чате', default='', type=str, nargs='?')
     parser.add('-t', '--TOKEN', env_var='TOKEN', help='Токен для авторизации в чате', default='', type=str, nargs='?')
     parser.add('-c', '--HOST', env_var='HOST', help='Хост секретного чата', default='minechat.dvmn.org', type=str, nargs='?')
-    parser.add('-p', '--PORT', env_var='PORT', help='Порт секретного чата', default=5050, type=int, nargs='?')
+    parser.add('-p', '--PORT_TO_WRITE', env_var='PORT_TO_WRITE', help='Порт секретного чата', default=5050, type=int, nargs='?')
     return parser
 
 
@@ -42,10 +44,10 @@ async def registration(reader, writer):
     data = await reader.readline()
     logging.info(f'Вас зарегистрированы с именем {name}')
     logging.debug(f'Received: {data.decode()}')
-    async with aiofiles.open('token.txt', mode='w') as file:
-        token = "TOKEN=" + json.loads(data.decode().split('\n')[0])['account_hash']+'\n'
-        await file.write(token)
-        logging.debug(f'token: {token}')
+
+    token = "TOKEN=" + json.loads(data.decode().split('\n')[0])['account_hash'] + '\n'
+    await write_into_file(token, 'token.txt', mode='w')
+
     writer.close()
     await writer.wait_closed()
 
@@ -53,7 +55,7 @@ async def registration(reader, writer):
 async def submit_message(reader, writer, message=''):
     data = await reader.readline()
     logging.debug(data.decode())
-
+    message = message.replace('\n', '\\n')
     writer.write(f"{message}\n\n".encode())
     await writer.drain()
     await reader.readline()
@@ -62,7 +64,7 @@ async def submit_message(reader, writer, message=''):
 
 async def tcp_echo_client():
     host = connection_details.get().HOST
-    port = connection_details.get().PORT
+    port = connection_details.get().PORT_TO_WRITE
     token = connection_details.get().TOKEN
     message = connection_details.get().MESSAGE
 
@@ -100,8 +102,13 @@ def main():
         asyncio.run(tcp_echo_client())
     except ConnectionResetError:
         logging.info(
-            f'Спасибо за регистрацию, ваш токен записан в файл token.txt, перезапустите программу.'
+            'Спасибо за регистрацию, ваш токен записан в файл token.txt, перезапустите программу.'
         )
+    except ConnectionError:
+        logging.info(
+            'Ошибка соединения, повторное соединение будет через 10 сек.'
+        )
+        asyncio.run(tcp_echo_client())
 
 
 if __name__ == "__main__":

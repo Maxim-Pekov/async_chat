@@ -6,36 +6,32 @@ import configargparse
 import contextvars
 
 from datetime import datetime
+from file import write_into_file
 
 
 def create_parser():
     parser = configargparse.ArgParser(default_config_files=['.env'], ignore_unknown_config_file_keys=True)
 
-    parser.add('-f', '--FILE', env_var='FILE', help='файл назначения для логов', default='history', type=str, nargs='?')
+    parser.add('-f', '--HISTORY', env_var='HISTORY', help='файл назначения для логов', default='history', type=str, nargs='?')
     parser.add('-c', '--HOST', env_var='HOST', help='хост секретного чата', default='minechat.dvmn.org', type=str, nargs='?')
     parser.add('-p', '--PORT', env_var='PORT', help='порт секретного чата', default=5000, type=int, nargs='?')
     return parser
 
 
-async def write_into_file(chat_phrase):
-    # pathlib.Path(directory_path).mkdir(parents=True, exist_ok=True)
-    async with aiofiles.open(connections_vars.get().FILE, mode='a') as f:
-        chat_text = f"{datetime.now().strftime('[%d.%m.%Y %I:%M]')} {chat_phrase}"
-        await f.write(chat_text)
-        print(chat_text)
-
-
 async def read_from_socket(reader):
+    history_file = connections_vars.get().HISTORY
     while True:
         chat_phrase = await reader.readuntil(separator=b'\n')
         if not chat_phrase:
             break
-        await write_into_file(chat_phrase.decode("utf-8"))
+        chat_text = f"{datetime.now().strftime('[%d.%m.%Y %I:%M]')} {chat_phrase.decode('utf-8')}"
+        await write_into_file(chat_text, history_file)
 
 
 async def tcp_echo_client():
-    reader, writer = await asyncio.open_connection(
-        connections_vars.get().HOST, connections_vars.get().PORT)
+    host = connections_vars.get().HOST
+    port = connections_vars.get().PORT
+    reader, writer = await asyncio.open_connection(host , port)
     await read_from_socket(reader)
 
 
@@ -44,9 +40,16 @@ def main():
     options = parser.parse_args()
 
     connections_vars.set(options)
-    asyncio.run(tcp_echo_client())
+    try:
+        asyncio.run(tcp_echo_client())
+    except ConnectionError:
+        logging.info(
+            'Ошибка соединения, повторное соединение будет через 10 сек.'
+        )
+    finally:
+        asyncio.run(tcp_echo_client())
 
 
 if __name__ == "__main__":
-    connections_vars = contextvars.ContextVar('host')
+    connections_vars = contextvars.ContextVar('connections')
     main()
