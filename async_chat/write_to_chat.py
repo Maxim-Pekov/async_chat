@@ -15,7 +15,7 @@ def create_parser():
 
     parser.add('MESSAGE', help='Текст который нужно отправить в чат', type=str)
     parser.add('-u', '--NAME', env_var='NAME', help='Имя для использования в чате', default='', type=str, nargs='?')
-    parser.add('-t', '--TOKEN', env_var='TOKEN', help='Токен для авторизации в чате', default='', type=str, nargs='?')
+    parser.add('-t', '--TOKEN', env_var='TOKEN', help='Токен для авторизации в чате', default='xxx', type=str, nargs='?')
     parser.add('-c', '--HOST', env_var='HOST', help='Хост секретного чата', default='minechat.dvmn.org', type=str, nargs='?')
     parser.add('-p', '--PORT_TO_WRITE', env_var='PORT_TO_WRITE', help='Порт секретного чата', default=5050, type=int, nargs='?')
     return parser
