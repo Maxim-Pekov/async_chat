@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 
-async def check_token(reader, writer, token):
+async def authorise(reader, writer, token):
     writer.write(token.encode())
     await writer.drain()
     data = await reader.readline()
@@ -37,6 +37,17 @@ async def registration(reader, writer):
     await writer.wait_closed()
 
 
+async def submit_message(reader, writer, message=''):
+    data = await reader.readline()
+    logging.info(data.decode())
+
+    writer.write(f"{message}\n\n".encode())
+    await writer.drain()
+
+    data = await reader.readline()
+    logging.info(data.decode())
+
+
 async def tcp_echo_client(message=""):
     reader, writer = await asyncio.open_connection(
         'minechat.dvmn.org', 5050)
@@ -44,30 +55,14 @@ async def tcp_echo_client(message=""):
     data = await reader.readline()
     logging.debug(f'111-----Received: {data.decode()!r}')
 
-    is_token_approve = await check_token(reader, writer, "dfaab544-5414-11ee-aae7-0242ac110002_\n")
+    is_token_approve = await authorise(reader, writer, "dfaab544-5414-11ee-aae7-0242ac110002\n")
 
     if not is_token_approve:
         await registration(reader, writer)
 
-    data = await reader.read(100)
-    logging.debug(f'5Received: {data.decode()!r}')
+    await submit_message(reader, writer, message)
 
-
-    writer.write("Всем привет!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n".encode())
-    await writer.drain()
-
-    data = await reader.read(100)
-    logging.debug(f'6Received: {data.decode()!r}')
-
-
-    # writer.write("\n".encode())
-    # await writer.drain()
-
-    data = await reader.read(100)
-    logging.debug(f'Received: {data.decode()!r}')
-
-
-    print('Close the connection________________________________________________________________________')
+    logging.info('Close the connection')
     writer.close()
     await writer.wait_closed()
 
@@ -76,7 +71,7 @@ def main():
     logging.basicConfig(
         format='%(name)s - %(levelname)s - %(message)s',
         datefmt='%d-%m-%Y %I:%M:%S %p',
-        level=logging.INFO
+        level=logging.DEBUG
     )
     try:
         asyncio.run(tcp_echo_client())
