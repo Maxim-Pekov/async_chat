@@ -27,7 +27,7 @@ async def write_into_file(chat_phrase):
 
 async def read_from_socket(reader):
     while True:
-        chat_phrase = await reader.read(512)
+        chat_phrase = await reader.readuntil(separator=b'\n')
         if not chat_phrase:
             break
         await write_into_file(chat_phrase.decode("utf-8"))
