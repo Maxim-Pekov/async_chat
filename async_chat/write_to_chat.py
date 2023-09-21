@@ -1,13 +1,10 @@
 import asyncio
-import pathlib
-
-import aiofiles
 import configargparse
-import contextvars
 import logging
 import json
 
 from file import write_into_file
+from socket_context_manager import socket_connection
 
 
 def create_parser():
@@ -32,10 +29,9 @@ async def authorise(reader, writer, token):
     return True
 
 
-async def registration(reader, writer):
-    name = connection_details.get().NAME
+async def registration(reader, writer, name):
     if not name:
-        logging.info(f'Введите ваше имя')
+        logging.info('Введите ваше имя')
         name = input()
         name = name.replace('\n', '\\n')
     writer.write(f"{name}\n".encode())
@@ -65,46 +61,45 @@ async def submit_message(reader, writer, message=''):
     logger.info(f'Сообщение "{message}" отправлено!')
 
 
-async def tcp_echo_client():
-    host = connection_details.get().HOST
-    port = connection_details.get().PORT_TO_WRITE
-    token = connection_details.get().TOKEN
-    message = connection_details.get().MESSAGE
+async def chat_connection(options):
+    host = options.HOST
+    port = options.PORT_TO_WRITE
+    token = options.TOKEN
+    message = options.MESSAGE
+    name = options.NAME
 
-    reader, writer = await asyncio.open_connection(host, port)
+    async with socket_connection(host, port) as socket:
 
-    data = await reader.readline()
-    logger.debug(f'Received: {data.decode()!r}')
+        reader, writer = socket
 
-    is_token_approve = await authorise(reader, writer, f"{token}\n")
+        data = await reader.readline()
+        logger.debug(f'Received: {data.decode()!r}')
 
-    if not is_token_approve:
-        await registration(reader, writer)
+        is_token_approve = await authorise(reader, writer, f"{token}\n")
 
-    await submit_message(reader, writer, message)
+        if not is_token_approve:
+            await registration(reader, writer, name)
 
-    logger.info('Соединение закрыто')
-    writer.close()
-    await writer.wait_closed()
+        await submit_message(reader, writer, message)
+
+        writer.close()
+        await writer.wait_closed()
 
 
 def main():
     logging.basicConfig(
         format='%(name)s - %(levelname)s - %(message)s',
         datefmt='%d-%m-%Y %I:%M:%S %p',
-        level=logging.INFO
+        level=logging.DEBUG
     )
 
     parser = create_parser()
     options = parser.parse_args()
     logger.debug(options)
 
-    connection_details.set(options)
-
-    asyncio.run(tcp_echo_client())
+    asyncio.run(chat_connection(options))
 
 
 if __name__ == "__main__":
-    connection_details = contextvars.ContextVar('connection_details')
     logger = logging.getLogger('writer')
     main()
