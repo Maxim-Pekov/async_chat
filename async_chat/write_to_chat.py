@@ -4,7 +4,7 @@ import logging
 import json
 
 from file import write_into_file
-from socket_context_manager import socket_connection
+from socket_context_manager import create_socket_connection
 
 
 def create_parser():
@@ -18,7 +18,7 @@ def create_parser():
     return parser
 
 
-async def authorise(reader, writer, token):
+async def authorize_user(reader, writer, token):
     writer.write(token.encode())
     await writer.drain()
     data = await reader.readline()
@@ -29,7 +29,7 @@ async def authorise(reader, writer, token):
     return True
 
 
-async def registration(reader, writer, name):
+async def register_user(reader, writer, name):
     if not name:
         logging.info('Введите ваше имя')
         name = input()
@@ -61,24 +61,24 @@ async def submit_message(reader, writer, message=''):
     logger.info(f'Сообщение "{message}" отправлено!')
 
 
-async def chat_connection(options):
+async def connect_chat(options):
     host = options.HOST
     port = options.PORT_TO_WRITE
     token = options.TOKEN
     message = options.MESSAGE
     name = options.NAME
 
-    async with socket_connection(host, port) as socket:
+    async with create_socket_connection(host, port) as socket:
 
         reader, writer = socket
 
         data = await reader.readline()
         logger.debug(f'Received: {data.decode()!r}')
 
-        is_token_approve = await authorise(reader, writer, f"{token}\n")
+        is_token_approve = await authorize_user(reader, writer, f"{token}\n")
 
         if not is_token_approve:
-            await registration(reader, writer, name)
+            await register_user(reader, writer, name)
 
         await submit_message(reader, writer, message)
 
@@ -97,7 +97,7 @@ def main():
     options = parser.parse_args()
     logger.debug(options)
 
-    asyncio.run(chat_connection(options))
+    asyncio.run(connect_chat(options))
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ logger = logging.getLogger('socket_connection')
 
 
 @asynccontextmanager
-async def socket_connection(host, port):
+async def create_socket_connection(host, port):
     reader, writer = await asyncio.open_connection(host, port)
     try:
         logger.debug('Соединение открыто')

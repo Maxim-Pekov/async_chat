@@ -4,7 +4,7 @@ import configargparse
 import logging
 from datetime import datetime
 from file import write_into_file
-from socket_context_manager import socket_connection
+from socket_context_manager import create_socket_connection
 
 
 RECONNECT_DELAY = 10
@@ -28,20 +28,16 @@ async def read_from_socket(reader, history_file):
         await write_into_file(chat_text, history_file)
 
 
-async def chat_connection(options):
+async def connect_chat(options):
     host = options.HOST
     port = options.PORT
     history_file = options.HISTORY
     while True:
         try:
-            async with socket_connection(host, port) as sock:
+            async with create_socket_connection(host, port) as sock:
                 reader, writer = sock
                 await read_from_socket(reader, history_file)
-        except ConnectionRefusedError:
-            logger.info("Соединение с чатом, отсутствует")
-        except asyncio.TimeoutError:
-            logger.info("Соединение с чатом, отсутствует")
-        except socket.gaierror:
+        except (ConnectionRefusedError, asyncio.TimeoutError, socket.gaierror):
             logger.info("Соединение с чатом, отсутствует")
         logger.info(f'Переподключение произойдет через {RECONNECT_DELAY} секунд/ы.')
         await asyncio.sleep(RECONNECT_DELAY)
@@ -57,7 +53,7 @@ def main():
     parser = create_parser()
     options = parser.parse_args()
 
-    asyncio.run(chat_connection(options))
+    asyncio.run(connect_chat(options))
 
 
 if __name__ == "__main__":
